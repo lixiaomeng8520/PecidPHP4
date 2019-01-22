@@ -1,0 +1,11 @@
+{
+    "repositories": {
+        "packagist": {
+            "type": "composer",
+            "url": "https://packagist.laravel-china.org/"
+        }
+    },
+    "require": {
+        "nikic/fast-route": "^1.3"
+    }
+}
