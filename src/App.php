@@ -28,7 +28,7 @@ class App {
         return $this->container;
     }
 
-    public static function run() {
+    public static function getInstance() {
         return new static();
     }
 
@@ -58,7 +58,20 @@ class App {
         array_push($this->middlewares, $middleware);
     }
 
-    public function dispatch() {
+    public function run() {
+        try {
+            $this->dispatch();
+        } catch (\Exception $e) {
+            echo 'exception-----------------' . $e->getMessage() . $e->getFile() . $e->getLine();
+        } catch (\Error $e) {
+            echo 'error---------------------' . $e->getMessage() . $e->getFile() . $e->getLine();
+        } catch (\Throwable $t) {
+            echo 'throwable-----------------' . $t->getMessage();
+        }
+    }
+
+
+    private function dispatch() {
         $dispatcher = \FastRoute\simpleDispatcher(function(RouteCollector $r) {
             foreach($this->routes as $id => $route) {
                 $r->addRoute($route->method, $route->pattern, $id);
@@ -68,26 +81,18 @@ class App {
         $request = ServerRequestFactory::fromGlobals($_SERVER, $_GET, $_POST, $_COOKIE, $_FILES);
         $routeInfo = $dispatcher->dispatch($request->getMethod(), $request->getUri()->getPath());
 
-        try {
-            switch ($routeInfo[0]) {
-                case Dispatcher::NOT_FOUND:
-                case Dispatcher::METHOD_NOT_ALLOWED:
-                    throw new \Exception('404 not found');
-                default:
-                    $route = $this->routes[$routeInfo[1]];
-                    $route->args = $routeInfo[2];
-                    $request = $request->withAttribute('route', $route);
-                    $request = $request->withAttribute('container', $this->container);
-                    $this->add($route);
-                    $response = (new Relay($this->middlewares))->handle($request);
-                    echo $response->getBody();
-            }
-        } catch (\Exception $e) {
-            echo 'exception-----------------' . $e->getMessage() . $e->getFile() . $e->getLine();
-        } catch (\Error $e) {
-            echo 'error---------------------' . $e->getMessage() . $e->getFile() . $e->getLine();
-        } catch (\Throwable $t) {
-            echo 'throwable-----------------' . $t->getMessage();
+        switch ($routeInfo[0]) {
+            case Dispatcher::NOT_FOUND:
+            case Dispatcher::METHOD_NOT_ALLOWED:
+                throw new \Exception('404 not found');
+            default:
+                $route = $this->routes[$routeInfo[1]];
+                $route->args = $routeInfo[2];
+                $request = $request->withAttribute('route', $route);
+                $request = $request->withAttribute('container', $this->container);
+                $this->add($route);
+                $response = (new Relay($this->middlewares))->handle($request);
+                echo $response->getBody();
         }
     }
 

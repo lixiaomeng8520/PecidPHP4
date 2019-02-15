@@ -5,7 +5,7 @@
 require '../vendor/autoload.php';
 
 
-$app = \PecidPHP4\App::run();
+$app = \PecidPHP4\App::getInstance();
 
 //$app->get('/users', '\Blog\Controller\User:getUsers');
 //$app->get('/users', function(\Psr\Http\Message\RequestInterface $request) {
@@ -16,6 +16,7 @@ $app = \PecidPHP4\App::run();
 //});
 
 
+$users = $app->get('/users', '\Blog\Controller\User:getUsers');
 $users = $app->get('/users', '\Blog\Controller\User:getUsers');
 
 
@@ -30,6 +31,6 @@ $user = $app->get('/user/{name}', function(\Psr\Http\Message\ServerRequestInterf
 
 $user->add(new \Blog\Middleware\Login());
 
-$app->dispatch();
+$app->run();
 
 
