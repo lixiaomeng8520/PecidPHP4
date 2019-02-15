@@ -76,8 +76,10 @@ class App {
                 default:
                     $route = $this->routes[$routeInfo[1]];
                     $route->args = $routeInfo[2];
+                    $request = $request->withAttribute('route', $route);
+                    $request = $request->withAttribute('container', $this->container);
                     $this->add($route);
-                    $response = (new Relay($this->middlewares))->handle($request->withAttribute('container', $this->container));
+                    $response = (new Relay($this->middlewares))->handle($request);
                     echo $response->getBody();
             }
         } catch (\Exception $e) {
