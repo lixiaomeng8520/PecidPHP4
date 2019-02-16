@@ -1,11 +1,13 @@
 <?php
 namespace PecidPHP4;
 
-use Pimple\Container;
+use Pimple\Container as PimpleContainer;
 
 use Noodlehaus\ConfigInterface;
 use Noodlehaus\Config;
 
+use Pimple\Psr11\Container;
+use Psr\Container\ContainerInterface;
 use Relay\Relay;
 use Zend\Diactoros\ServerRequestFactory;
 
@@ -19,13 +21,13 @@ class App {
     private $routes = [];
 
     /**
-     * @var Container
+     * @var PimpleContainer
      */
     private $container;
 
-    public function getContainer() : Container
+    public function getContainer() : ContainerInterface
     {
-        return $this->container;
+        return new Container($this->container);
     }
 
     public static function getInstance() {
@@ -97,7 +99,7 @@ class App {
     }
 
     private function initContainer() {
-        $this->container = new Container();
+        $this->container = new PimpleContainer();
     }
 
     private function initConfig() {

@@ -16,7 +16,7 @@ $app = \PecidPHP4\App::getInstance();
 //});
 
 
-$users = $app->get('/users', '\Blog\Controller\User:getUsers');
+//$users = $app->get('/users', '\Blog\Controller\User:getUsers');
 $users = $app->get('/users', '\Blog\Controller\User:getUsers');
 
 
