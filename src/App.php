@@ -1,13 +1,12 @@
 <?php
 namespace PecidPHP4;
 
-use Pimple\Container as PimpleContainer;
 
 use Noodlehaus\ConfigInterface;
 use Noodlehaus\Config;
 
-use Pimple\Psr11\Container;
 use Psr\Container\ContainerInterface;
+use Psr\Log\LoggerInterface;
 use Relay\Relay;
 use Zend\Diactoros\ServerRequestFactory;
 
@@ -21,13 +20,22 @@ class App {
     private $routes = [];
 
     /**
-     * @var PimpleContainer
+     * @var Container
      */
     private $container;
 
+    /**
+     * @var LoggerInterface
+     */
+    private $logger;
+
     public function getContainer() : ContainerInterface
     {
-        return new Container($this->container);
+        return $this->container;
+    }
+
+    public function getLogger() : LoggerInterface {
+
     }
 
     public static function getInstance() {
@@ -36,6 +44,9 @@ class App {
 
     public function __construct()
     {
+        set_error_handler([$this, 'errorHandler']);
+        register_shutdown_function([$this, 'shutdownHandler']);
+
         $this->initContainer();
         $this->initConfig();
     }
@@ -61,17 +72,26 @@ class App {
     }
 
     public function run() {
-        try {
-            $this->dispatch();
+
+        $this->dispatch();
+        /*try {
+            $a = 10 / 0;
         } catch (\Exception $e) {
             echo 'exception-----------------' . $e->getMessage() . $e->getFile() . $e->getLine();
         } catch (\Error $e) {
             echo 'error---------------------' . $e->getMessage() . $e->getFile() . $e->getLine();
         } catch (\Throwable $t) {
             echo 'throwable-----------------' . $t->getMessage();
-        }
+        }*/
     }
 
+    public function errorHandler(int $errno, string $errstr) {
+        echo $errstr;
+    }
+
+    public function shutdownHandler() {
+        $error = error_get_last();
+    }
 
     private function dispatch() {
         $dispatcher = \FastRoute\simpleDispatcher(function(RouteCollector $r) {
@@ -90,8 +110,7 @@ class App {
             default:
                 $route = $this->routes[$routeInfo[1]];
                 $route->args = $routeInfo[2];
-                $request = $request->withAttribute('route', $route);
-                $request = $request->withAttribute('container', $this->container);
+                $request = $request->withAttribute('app', $this);
                 $this->add($route);
                 $response = (new Relay($this->middlewares))->handle($request);
                 echo $response->getBody();
@@ -99,7 +118,7 @@ class App {
     }
 
     private function initContainer() {
-        $this->container = new PimpleContainer();
+        $this->container = new Container();
     }
 
     private function initConfig() {
