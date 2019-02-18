@@ -1,15 +1,20 @@
 <?php
 namespace Blog\Controller;
 
-use Psr\Http\Message\RequestInterface;
+use PecidPHP4\App;
 use Psr\Http\Message\ServerRequestInterface;
 use Zend\Diactoros\Response;
 
 class User {
 
-    public function getUsers(RequestInterface $request) {
+    public function getUsers(ServerRequestInterface $request) {
         $response = new Response();
         $response->getBody()->write('users:');
+        /* @var App $app */
+        $app = $request->getAttribute('app');
+        $logger = $app->getLogger();
+        $logger->warning('nihaonihaonihao');
+
         return $response;
     }
 

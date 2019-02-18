@@ -2,6 +2,7 @@
 namespace PecidPHP4;
 
 
+use Monolog\Logger;
 use Noodlehaus\ConfigInterface;
 use Noodlehaus\Config;
 
@@ -35,7 +36,7 @@ class App {
     }
 
     public function getLogger() : LoggerInterface {
-
+        return $this->logger;
     }
 
     public static function getInstance() {
@@ -45,10 +46,12 @@ class App {
     public function __construct()
     {
         set_error_handler([$this, 'errorHandler']);
+        set_exception_handler([$this, 'exceptionHandler']);
         register_shutdown_function([$this, 'shutdownHandler']);
 
         $this->initContainer();
         $this->initConfig();
+        $this->initLogger();
     }
 
     public function get(string $pattern, $handler, string $name = '') : Route {
@@ -72,25 +75,21 @@ class App {
     }
 
     public function run() {
-
         $this->dispatch();
-        /*try {
-            $a = 10 / 0;
-        } catch (\Exception $e) {
-            echo 'exception-----------------' . $e->getMessage() . $e->getFile() . $e->getLine();
-        } catch (\Error $e) {
-            echo 'error---------------------' . $e->getMessage() . $e->getFile() . $e->getLine();
-        } catch (\Throwable $t) {
-            echo 'throwable-----------------' . $t->getMessage();
-        }*/
     }
 
     public function errorHandler(int $errno, string $errstr) {
-        echo $errstr;
+        $this->logger->error($errstr);
+    }
+
+    public function exceptionHandler(\Throwable $t) {
+        $this->logger->error($t->getMessage());
     }
 
     public function shutdownHandler() {
-        $error = error_get_last();
+        if ($error = error_get_last()) {
+            $this->logger->error($error);
+        }
     }
 
     private function dispatch() {
@@ -128,5 +127,9 @@ class App {
             file_exists($app_config_path) && $config->merge(new Config($app_config_path));
             return $config;
         };
+    }
+
+    private function initLogger() {
+        $this->logger = new Logger('PecidPHP4');
     }
 }
