@@ -4,7 +4,8 @@ namespace PecidPHP4;
 use Psr\Http\Message\ServerRequestInterface;
 use Relay\Relay;
 
-class Route {
+class Route
+{
 
     /**
      * @var string
@@ -43,7 +44,8 @@ class Route {
         $this->name = $name;
     }
 
-    public function __get($name) {
+    public function __get($name)
+    {
         return $this->$name;
     }
 
@@ -60,7 +62,7 @@ class Route {
                 throw new \Exception("action ${controller}:${action}  not found");
             }
             $handler = [new $controller(), $action];
-        } else if ($this->handler instanceof \Closure) {
+        } elseif ($this->handler instanceof \Closure) {
             $handler = $this->handler;
         } else {
             throw new \Exception('handler can not be resolved');
@@ -69,7 +71,8 @@ class Route {
         return (new Relay($this->middlewares))->handle($request->withAttribute('args', $this->args));
     }
 
-    public function add($middleware) {
+    public function add($middleware)
+    {
         array_push($this->middlewares, $middleware);
     }
 

@@ -5,9 +5,11 @@ use PecidPHP4\App;
 use Psr\Http\Message\ServerRequestInterface;
 use Zend\Diactoros\Response;
 
-class User {
+class User
+{
 
-    public function getUsers(ServerRequestInterface $request) {
+    public function getUsers(ServerRequestInterface $request)
+    {
         $response = new Response();
         $response->getBody()->write('users:');
         /* @var App $app */
@@ -18,7 +20,8 @@ class User {
         return $response;
     }
 
-    public function getUser(ServerRequestInterface $request) {
+    public function getUser(ServerRequestInterface $request)
+    {
         $args = $request->getAttribute('args');
         $response = new Response();
         $response->getBody()->write($args['name'] . ':');

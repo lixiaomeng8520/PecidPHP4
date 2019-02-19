@@ -1,7 +1,6 @@
 <?php
 namespace PecidPHP4;
 
-
 use Monolog\Logger;
 use Noodlehaus\ConfigInterface;
 use Noodlehaus\Config;
@@ -14,7 +13,8 @@ use Zend\Diactoros\ServerRequestFactory;
 use FastRoute\Dispatcher;
 use FastRoute\RouteCollector;
 
-class App {
+class App
+{
 
     private $middlewares = [];
 
@@ -35,11 +35,13 @@ class App {
         return $this->container;
     }
 
-    public function getLogger() : LoggerInterface {
+    public function getLogger() : LoggerInterface
+    {
         return $this->logger;
     }
 
-    public static function getInstance() {
+    public static function getInstance()
+    {
         return new static();
     }
 
@@ -54,15 +56,18 @@ class App {
         $this->initLogger();
     }
 
-    public function get(string $pattern, $handler, string $name = '') : Route {
+    public function get(string $pattern, $handler, string $name = '') : Route
+    {
         return $this->map('GET', $pattern, $handler, $name);
     }
 
-    public function post(string $pattern, $handler, string $name = '') : Route {
+    public function post(string $pattern, $handler, string $name = '') : Route
+    {
         return $this->map('POST', $pattern, $handler, $name);
     }
 
-    public function map(string $method, string $pattern, $handler, string $name) : Route {
+    public function map(string $method, string $pattern, $handler, string $name) : Route
+    {
     //  preg_match('/^([a-zA-Z0-9_\\]+?):([a-zA-Z0-9_]+)$/', $pattern, $matches);
         $route = new Route($method, $pattern, $handler, $name);
         $this->routes[Route::$id] = $route;
@@ -70,31 +75,37 @@ class App {
         return $route;
     }
 
-    public function add($middleware) {
+    public function add($middleware)
+    {
         array_push($this->middlewares, $middleware);
     }
 
-    public function run() {
+    public function run()
+    {
         $this->dispatch();
     }
 
-    public function errorHandler(int $errno, string $errstr) {
+    public function errorHandler(int $errno, string $errstr)
+    {
         $this->logger->error($errstr);
     }
 
-    public function exceptionHandler(\Throwable $t) {
+    public function exceptionHandler(\Throwable $t)
+    {
         $this->logger->error($t->getMessage());
     }
 
-    public function shutdownHandler() {
+    public function shutdownHandler()
+    {
         if ($error = error_get_last()) {
             $this->logger->error($error);
         }
     }
 
-    private function dispatch() {
-        $dispatcher = \FastRoute\simpleDispatcher(function(RouteCollector $r) {
-            foreach($this->routes as $id => $route) {
+    private function dispatch()
+    {
+        $dispatcher = \FastRoute\simpleDispatcher(function (RouteCollector $r) {
+            foreach ($this->routes as $id => $route) {
                 $r->addRoute($route->method, $route->pattern, $id);
             }
         });
@@ -116,12 +127,14 @@ class App {
         }
     }
 
-    private function initContainer() {
+    private function initContainer()
+    {
         $this->container = new Container();
     }
 
-    private function initConfig() {
-        $this->container['config'] = function() : ConfigInterface {
+    private function initConfig()
+    {
+        $this->container['config'] = function () : ConfigInterface {
             $config = new Config(dirname(__FILE__) . DIRECTORY_SEPARATOR . 'config.json');
             $app_config_path = dirname(getcwd()) . DIRECTORY_SEPARATOR . 'blog' . DIRECTORY_SEPARATOR . 'config';
             file_exists($app_config_path) && $config->merge(new Config($app_config_path));
@@ -129,7 +142,8 @@ class App {
         };
     }
 
-    private function initLogger() {
+    private function initLogger()
+    {
         $this->logger = new Logger('PecidPHP4');
     }
 }
