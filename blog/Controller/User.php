@@ -12,11 +12,7 @@ class User
     {
         $response = new Response();
         $response->getBody()->write('users:');
-        /* @var App $app */
-        $app = $request->getAttribute('app');
-        $logger = $app->getLogger();
-        $logger->warning('nihaonihaonihao');
-
+        $a = $b + 1;
         return $response;
     }
 

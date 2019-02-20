@@ -5,9 +5,13 @@ use Monolog\Logger;
 use Noodlehaus\ConfigInterface;
 use Noodlehaus\Config;
 
+use PecidPHP4\ErrorHandler;
+
 use Psr\Container\ContainerInterface;
+use Psr\Http\Message\ServerRequestInterface;
 use Psr\Log\LoggerInterface;
 use Relay\Relay;
+use Whoops\Run;
 use Zend\Diactoros\ServerRequestFactory;
 
 use FastRoute\Dispatcher;
@@ -15,30 +19,13 @@ use FastRoute\RouteCollector;
 
 class App
 {
-
-    private $middlewares = [];
+    private $container;
+    private $config;
+    private $logger;
+    private $whoops;
 
     private $routes = [];
-
-    /**
-     * @var Container
-     */
-    private $container;
-
-    /**
-     * @var LoggerInterface
-     */
-    private $logger;
-
-    public function getContainer() : ContainerInterface
-    {
-        return $this->container;
-    }
-
-    public function getLogger() : LoggerInterface
-    {
-        return $this->logger;
-    }
+    private $middlewares = [];
 
     public static function getInstance()
     {
@@ -47,14 +34,54 @@ class App
 
     public function __construct()
     {
-        set_error_handler([$this, 'errorHandler']);
-        set_exception_handler([$this, 'exceptionHandler']);
-        register_shutdown_function([$this, 'shutdownHandler']);
-
-        $this->initContainer();
-        $this->initConfig();
-        $this->initLogger();
+        $this->initWhoops();
     }
+
+    /****************************Component*************************************/
+
+    /// Container
+
+    public function getContainer() : ContainerInterface
+    {
+        if (!$this->container) {
+            $this->container = new Container();
+        }
+        return $this->container;
+    }
+
+    /// Config
+
+    private function getConfig() : ConfigInterface
+    {
+        if (!$this->config) {
+            $this->config = new Config(dirname(__FILE__) . DIRECTORY_SEPARATOR . 'config.json');
+            $app_config_path = dirname(getcwd()) . DIRECTORY_SEPARATOR . 'blog' . DIRECTORY_SEPARATOR . 'config';
+            file_exists($app_config_path) && $this->config->merge(new Config($app_config_path));
+        }
+        return $this->config;
+    }
+
+    /// Logger
+
+    public function getLogger() : LoggerInterface
+    {
+        if (!$this->logger) {
+            $this->logger = new Logger('PecidPHP4');
+        }
+        return $this->logger;
+    }
+
+    /// Whoops
+
+    private function initWhoops()
+    {
+        $this->whoops = new Run();
+        $this->whoops->pushHandler(new ErrorHandler($this->getLogger()));
+        $this->whoops->register();
+    }
+
+
+    /****************************Route*****************************************/
 
     public function get(string $pattern, $handler, string $name = '') : Route
     {
@@ -68,41 +95,43 @@ class App
 
     public function map(string $method, string $pattern, $handler, string $name) : Route
     {
-    //  preg_match('/^([a-zA-Z0-9_\\]+?):([a-zA-Z0-9_]+)$/', $pattern, $matches);
+        //  preg_match('/^([a-zA-Z0-9_\\]+?):([a-zA-Z0-9_]+)$/', $pattern, $matches);
         $route = new Route($method, $pattern, $handler, $name);
         $this->routes[Route::$id] = $route;
         Route::$id++;
         return $route;
     }
 
+    /****************************Middleware*************************************/
+
     public function add($middleware)
     {
         array_push($this->middlewares, $middleware);
     }
 
+    /****************************Run********************************************/
+
     public function run()
     {
-        $this->dispatch();
-    }
+        $request = ServerRequestFactory::fromGlobals($_SERVER, $_GET, $_POST, $_COOKIE, $_FILES);
+        $response = $this->dispatch($request);
 
-    public function errorHandler(int $errno, string $errstr)
-    {
-        $this->logger->error($errstr);
-    }
-
-    public function exceptionHandler(\Throwable $t)
-    {
-        $this->logger->error($t->getMessage());
-    }
-
-    public function shutdownHandler()
-    {
-        if ($error = error_get_last()) {
-            $this->logger->error($error);
+        header(sprintf(
+            'HTTP/%s %s %s',
+            $response->getProtocolVersion(),
+            $response->getStatusCode(),
+            $response->getReasonPhrase()
+        ));
+        foreach ($response->getHeaders() as $k => $v_a) {
+            $replace = $k === 'Set-Cookie' ? false : true;
+            foreach ($v_a as $v) {
+                header("${k}: ${v}", $replace);
+            }
         }
+        echo $response->getBody();
     }
 
-    private function dispatch()
+    private function dispatch(ServerRequestInterface $request)
     {
         $dispatcher = \FastRoute\simpleDispatcher(function (RouteCollector $r) {
             foreach ($this->routes as $id => $route) {
@@ -110,40 +139,22 @@ class App
             }
         });
 
-        $request = ServerRequestFactory::fromGlobals($_SERVER, $_GET, $_POST, $_COOKIE, $_FILES);
         $routeInfo = $dispatcher->dispatch($request->getMethod(), $request->getUri()->getPath());
 
         switch ($routeInfo[0]) {
             case Dispatcher::NOT_FOUND:
+                throw new \Exception('404 Not Found');
             case Dispatcher::METHOD_NOT_ALLOWED:
-                throw new \Exception('404 not found');
+                throw new \Exception('405 Method Not Allowed');
             default:
                 $route = $this->routes[$routeInfo[1]];
                 $route->args = $routeInfo[2];
                 $request = $request->withAttribute('app', $this);
                 $this->add($route);
                 $response = (new Relay($this->middlewares))->handle($request);
-                echo $response->getBody();
+                return $response;
         }
     }
 
-    private function initContainer()
-    {
-        $this->container = new Container();
-    }
 
-    private function initConfig()
-    {
-        $this->container['config'] = function () : ConfigInterface {
-            $config = new Config(dirname(__FILE__) . DIRECTORY_SEPARATOR . 'config.json');
-            $app_config_path = dirname(getcwd()) . DIRECTORY_SEPARATOR . 'blog' . DIRECTORY_SEPARATOR . 'config';
-            file_exists($app_config_path) && $config->merge(new Config($app_config_path));
-            return $config;
-        };
-    }
-
-    private function initLogger()
-    {
-        $this->logger = new Logger('PecidPHP4');
-    }
 }
