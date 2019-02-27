@@ -23,8 +23,6 @@ class App extends Handler
     private $container;
     private $config;
     private $logger;
-    /* @var Run */
-    private $whoops;
 
     private $routes = [];
     private $middlewares = [];
@@ -32,18 +30,23 @@ class App extends Handler
     /* @var ServerRequestInterface */
     private $request;
 
-    public static function getInstance()
+    /* @var Route */
+    private $route;
+
+    public static function getInstance(string $app_config_path)
     {
-        return new static();
+        return new static($app_config_path);
     }
 
-    public function __construct()
+    public function __construct(string $app_config_path)
     {
         (new Run())->pushHandler($this)->register();
 
+        $this->config = new Config(dirname(__FILE__) . DIRECTORY_SEPARATOR . 'config.json');
+        file_exists($app_config_path) && $this->config->merge(new Config($app_config_path));
+
         $this->request = ServerRequestFactory::fromGlobals($_SERVER, $_GET, $_POST, $_COOKIE, $_FILES);
         $this->request = $this->request->withAttribute('app', $this);
-
     }
 
     /****************************Component*************************************/
@@ -60,13 +63,8 @@ class App extends Handler
 
     /// Config
 
-    private function getConfig() : ConfigInterface
+    public function getConfig() : ConfigInterface
     {
-        if (!$this->config) {
-            $this->config = new Config(dirname(__FILE__) . DIRECTORY_SEPARATOR . 'config.json');
-            $app_config_path = dirname(getcwd()) . DIRECTORY_SEPARATOR . 'blog' . DIRECTORY_SEPARATOR . 'config';
-            file_exists($app_config_path) && $this->config->merge(new Config($app_config_path));
-        }
         return $this->config;
     }
 
@@ -127,9 +125,9 @@ class App extends Handler
             case Dispatcher::METHOD_NOT_ALLOWED:
                 throw new MethodNotAllowedException('405 Method Not Allowed');
             default:
-                $route = $this->routes[$routeInfo[1]];
-                $route->args = $routeInfo[2];
-                $this->add($route);
+                $this->route = $this->routes[$routeInfo[1]];
+                $this->route->args = $routeInfo[2];
+                $this->add($this->route);
                 $response = (new Relay($this->middlewares))->handle($this->request);
                 $this->respond($response);
         }
@@ -153,6 +151,7 @@ class App extends Handler
 
     private function respond(ResponseInterface $response)
     {
+//        die;
         header(sprintf(
             'HTTP/%s %s %s',
             $response->getProtocolVersion(),

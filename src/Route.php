@@ -68,7 +68,7 @@ class Route
             throw new \Exception('handler can not be resolved');
         }
         $this->add($handler);
-        return (new Relay($this->middlewares))->handle($request->withAttribute('args', $this->args));
+        return (new Relay($this->middlewares))->handle($request);
     }
 
     public function add($middleware)

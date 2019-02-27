@@ -18,9 +18,14 @@ class User
 
     public function getUser(ServerRequestInterface $request)
     {
-        $args = $request->getAttribute('args');
+        /* @var App $app */
+        $app = $request->getAttribute('app');
+        $config = $app->getConfig();
+        var_dump($config->get('custom'));die;
+
+
         $response = new Response();
-        $response->getBody()->write($args['name'] . ':');
+        $response->getBody()->write('dddd');
         return $response;
     }
 }
