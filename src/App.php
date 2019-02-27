@@ -4,13 +4,10 @@ namespace PecidPHP4;
 use Monolog\Logger;
 use Noodlehaus\ConfigInterface;
 use Noodlehaus\Config;
-
-use PecidPHP4\ExceptionHandler\MethodNotAllowedHandler;
-use PecidPHP4\ExceptionHandler\NotFoundHandler;
 use PecidPHP4\Exception\MethodNotAllowedException;
 use PecidPHP4\Exception\NotFoundException;
-
 use Psr\Container\ContainerInterface;
+use Psr\Http\Message\ResponseInterface;
 use Psr\Http\Message\ServerRequestInterface;
 use Psr\Log\LoggerInterface;
 use Relay\Relay;
@@ -32,6 +29,9 @@ class App extends Handler
     private $routes = [];
     private $middlewares = [];
 
+    /* @var ServerRequestInterface */
+    private $request;
+
     public static function getInstance()
     {
         return new static();
@@ -39,7 +39,11 @@ class App extends Handler
 
     public function __construct()
     {
-        $this->getWhoops();
+        (new Run())->pushHandler($this)->register();
+
+        $this->request = ServerRequestFactory::fromGlobals($_SERVER, $_GET, $_POST, $_COOKIE, $_FILES);
+        $this->request = $this->request->withAttribute('app', $this);
+
     }
 
     /****************************Component*************************************/
@@ -76,18 +80,6 @@ class App extends Handler
         return $this->logger;
     }
 
-    /// Whoops
-
-    private function getWhoops()
-    {
-        if (!$this->whoops) {
-            $this->whoops = new Run();
-            $this->whoops->pushHandler($this);
-            $this->whoops->register();
-        }
-        return $this->whoops;
-    }
-
 
     /****************************Route*****************************************/
 
@@ -121,33 +113,13 @@ class App extends Handler
 
     public function run()
     {
-        $request = ServerRequestFactory::fromGlobals($_SERVER, $_GET, $_POST, $_COOKIE, $_FILES);
-        $response = $this->dispatch($request);
-
-        header(sprintf(
-            'HTTP/%s %s %s',
-            $response->getProtocolVersion(),
-            $response->getStatusCode(),
-            $response->getReasonPhrase()
-        ));
-        foreach ($response->getHeaders() as $k => $v_a) {
-            $replace = $k === 'Set-Cookie' ? false : true;
-            foreach ($v_a as $v) {
-                header("${k}: ${v}", $replace);
-            }
-        }
-        echo $response->getBody();
-    }
-
-    private function dispatch(ServerRequestInterface $request)
-    {
         $dispatcher = \FastRoute\simpleDispatcher(function (RouteCollector $r) {
             foreach ($this->routes as $id => $route) {
                 $r->addRoute($route->method, $route->pattern, $id);
             }
         });
 
-        $routeInfo = $dispatcher->dispatch($request->getMethod(), $request->getUri()->getPath());
+        $routeInfo = $dispatcher->dispatch($this->request->getMethod(), $this->request->getUri()->getPath());
 
         switch ($routeInfo[0]) {
             case Dispatcher::NOT_FOUND:
@@ -157,10 +129,9 @@ class App extends Handler
             default:
                 $route = $this->routes[$routeInfo[1]];
                 $route->args = $routeInfo[2];
-                $request = $request->withAttribute('app', $this);
                 $this->add($route);
-                $response = (new Relay($this->middlewares))->handle($request);
-                return $response;
+                $response = (new Relay($this->middlewares))->handle($this->request);
+                $this->respond($response);
         }
     }
 
@@ -176,6 +147,24 @@ class App extends Handler
         } else {
             $handler = $config->get('exceptionHandlers.error');
         }
-        call_user_func_array(new $handler(), [$exception]);
+        $response = call_user_func_array([new $handler(), 'handle'], [$this->request, $exception]);
+        $this->respond($response);
+    }
+
+    private function respond(ResponseInterface $response)
+    {
+        header(sprintf(
+            'HTTP/%s %s %s',
+            $response->getProtocolVersion(),
+            $response->getStatusCode(),
+            $response->getReasonPhrase()
+        ));
+        foreach ($response->getHeaders() as $k => $v_a) {
+            $replace = $k === 'Set-Cookie' ? false : true;
+            foreach ($v_a as $v) {
+                header("${k}: ${v}", $replace);
+            }
+        }
+        echo $response->getBody();
     }
 }

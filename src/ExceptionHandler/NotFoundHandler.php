@@ -1,10 +1,7 @@
 <?php
 namespace PecidPHP4\ExceptionHandler;
 
-class NotFoundHandler
+class NotFoundHandler extends Handler
 {
-    public function __invoke(\Throwable $t)
-    {
-        echo self::class . ' : ' . $t->getMessage();
-    }
+    protected $code = 404;
 }

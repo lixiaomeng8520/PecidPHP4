@@ -1,10 +1,7 @@
 <?php
 namespace PecidPHP4\ExceptionHandler;
 
-class MethodNotAllowedHandler
+class MethodNotAllowedHandler extends Handler
 {
-    public function __invoke(\Throwable $t)
-    {
-        echo self::class . ' : ' . $t->getMessage();
-    }
+    protected $code = 405;
 }
