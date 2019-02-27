@@ -1,13 +1,13 @@
 {
-  "notFoundHandler"          : "\\PecidPHP4\\ExceptionHandler\\NotFoundHandler",
-  "methodNotAllowedHandler"  : "\\PecidPHP4\\ExceptionHandler\\MethodNotAllowedHandler",
-  "errorHandler"             : "\\PecidPHP4\\ExceptionHandler\\ErrorHandler",
+    "notFoundHandler"          : "\\PecidPHP4\\ExceptionHandler\\NotFoundHandler",
+    "methodNotAllowedHandler"  : "\\PecidPHP4\\ExceptionHandler\\MethodNotAllowedHandler",
+    "errorHandler"             : "\\PecidPHP4\\ExceptionHandler\\ErrorHandler",
 
-  "routes" : {
-    "home" : {
-      "method": "GET",
-      "pattern": "/",
-      "handler": "\\PecidPHP4\\DefaultController:index"
+    "routes" : {
+        "home" : {
+            "method": "GET",
+            "pattern": "/",
+            "handler": "\\PecidPHP4\\DefaultController:index"
+        }
     }
-  }
 }
