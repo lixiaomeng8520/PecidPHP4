@@ -1,14 +1,5 @@
 {
     "notFoundHandler"          : "\\PecidPHP4\\ExceptionHandler\\NotFoundHandler",
     "methodNotAllowedHandler"  : "\\PecidPHP4\\ExceptionHandler\\MethodNotAllowedHandler",
-    "errorHandler"             : "\\PecidPHP4\\ExceptionHandler\\ErrorHandler",
-
-    "routes": [
-        {
-            "name": "home",
-            "method": "GET",
-            "pattern": "/",
-            "handler": "\\PecidPHP4\\DefaultController:index"
-        }
-    ]
+    "errorHandler"             : "\\PecidPHP4\\ExceptionHandler\\ErrorHandler"
 }

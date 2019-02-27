@@ -62,7 +62,7 @@ class Route
                 throw new \Exception("action ${controller}:${action}  not found");
             }
             $handler = [new $controller(), $action];
-        } elseif ($this->handler instanceof \Closure) {
+        } elseif (is_callable($this->handler)) {
             $handler = $this->handler;
         } else {
             throw new \Exception('handler can not be resolved');

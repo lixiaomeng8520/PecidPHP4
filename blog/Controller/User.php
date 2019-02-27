@@ -10,18 +10,16 @@ class User
 
     public function getUsers(ServerRequestInterface $request)
     {
-        $response = new Response();
-        $response->getBody()->write('users:');
-        $a = $b + 1;
+        /* @var App $app */
+        $app = $request->getAttribute('app');
+        $config = $app->getConfig();
+        var_dump($config->get('route'));die;
         return $response;
     }
 
     public function getUser(ServerRequestInterface $request)
     {
-        /* @var App $app */
-        $app = $request->getAttribute('app');
-        $config = $app->getConfig();
-        var_dump($config->get('routes'));die;
+
 
 
         $response = new Response();
