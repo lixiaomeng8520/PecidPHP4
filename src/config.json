@@ -1,3 +1,7 @@
 {
-  "debug": true
+  "exceptionHandlers" : {
+    "notFound"          : "\\PecidPHP4\\ExceptionHandler\\NotFoundHandler",
+    "methodNotAllowed"  : "\\PecidPHP4\\ExceptionHandler\\MethodNotAllowedHandler",
+    "error"             : "\\PecidPHP4\\ExceptionHandler\\ErrorHandler"
+  }
 }

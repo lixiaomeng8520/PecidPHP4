@@ -5,23 +5,28 @@ use Monolog\Logger;
 use Noodlehaus\ConfigInterface;
 use Noodlehaus\Config;
 
-use PecidPHP4\ErrorHandler;
+use PecidPHP4\ExceptionHandler\MethodNotAllowedHandler;
+use PecidPHP4\ExceptionHandler\NotFoundHandler;
+use PecidPHP4\Exception\MethodNotAllowedException;
+use PecidPHP4\Exception\NotFoundException;
 
 use Psr\Container\ContainerInterface;
 use Psr\Http\Message\ServerRequestInterface;
 use Psr\Log\LoggerInterface;
 use Relay\Relay;
+use Whoops\Handler\Handler;
 use Whoops\Run;
 use Zend\Diactoros\ServerRequestFactory;
 
 use FastRoute\Dispatcher;
 use FastRoute\RouteCollector;
 
-class App
+class App extends Handler
 {
     private $container;
     private $config;
     private $logger;
+    /* @var Run */
     private $whoops;
 
     private $routes = [];
@@ -34,7 +39,7 @@ class App
 
     public function __construct()
     {
-        $this->initWhoops();
+        $this->getWhoops();
     }
 
     /****************************Component*************************************/
@@ -73,11 +78,14 @@ class App
 
     /// Whoops
 
-    private function initWhoops()
+    private function getWhoops()
     {
-        $this->whoops = new Run();
-        $this->whoops->pushHandler(new ErrorHandler($this->getLogger()));
-        $this->whoops->register();
+        if (!$this->whoops) {
+            $this->whoops = new Run();
+            $this->whoops->pushHandler($this);
+            $this->whoops->register();
+        }
+        return $this->whoops;
     }
 
 
@@ -143,9 +151,9 @@ class App
 
         switch ($routeInfo[0]) {
             case Dispatcher::NOT_FOUND:
-                throw new \Exception('404 Not Found');
+                throw new NotFoundException('404 Not Found');
             case Dispatcher::METHOD_NOT_ALLOWED:
-                throw new \Exception('405 Method Not Allowed');
+                throw new MethodNotAllowedException('405 Method Not Allowed');
             default:
                 $route = $this->routes[$routeInfo[1]];
                 $route->args = $routeInfo[2];
@@ -156,5 +164,18 @@ class App
         }
     }
 
+    public function handle()
+    {
+        $config = $this->getConfig();
+        $exception = $this->getException();
+        if ($exception instanceof NotFoundException) {
+            $handler = $config->get('exceptionHandlers.notFound');
 
+        } elseif ($exception instanceof MethodNotAllowedException) {
+            $handler = $config->get('exceptionHandlers.methodNotAllowed');
+        } else {
+            $handler = $config->get('exceptionHandlers.error');
+        }
+        call_user_func_array(new $handler(), [$exception]);
+    }
 }
