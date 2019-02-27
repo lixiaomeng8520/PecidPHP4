@@ -21,7 +21,7 @@ class User
         /* @var App $app */
         $app = $request->getAttribute('app');
         $config = $app->getConfig();
-        var_dump($config->get('exceptionHandlers'));die;
+        var_dump($config->get('routes'));die;
 
 
         $response = new Response();

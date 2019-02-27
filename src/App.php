@@ -40,18 +40,18 @@ class App extends Handler
 
     public function __construct(string $app_config_path)
     {
+        $this->request = ServerRequestFactory::fromGlobals($_SERVER, $_GET, $_POST, $_COOKIE, $_FILES);
+        $this->request = $this->request->withAttribute('app', $this);
+
         (new Run())->pushHandler($this)->register();
 
         $this->config = new Config(dirname(__FILE__) . DIRECTORY_SEPARATOR . 'config.json');
         file_exists($app_config_path) && $this->config->merge(new Config($app_config_path));
 
         $routes = $this->config->get('routes');
-        foreach ($routes as $name => $route) {
-            $this->map($route['method'], $route['pattern'], $route['handler'], $name);
+        foreach ($routes as $route) {
+            $this->map($route['name'], $route['method'], $route['pattern'], $route['handler']);
         }
-
-        $this->request = ServerRequestFactory::fromGlobals($_SERVER, $_GET, $_POST, $_COOKIE, $_FILES);
-        $this->request = $this->request->withAttribute('app', $this);
     }
 
     /****************************Component*************************************/
@@ -95,12 +95,10 @@ class App extends Handler
         return $this->map('POST', $pattern, $handler, $name);
     }
 
-    public function map(string $method, string $pattern, $handler, string $name) : Route
+    public function map(string $name, string $method, string $pattern, $handler) : Route
     {
-        //  preg_match('/^([a-zA-Z0-9_\\]+?):([a-zA-Z0-9_]+)$/', $pattern, $matches);
         $route = new Route($method, $pattern, $handler, $name);
         $this->routes[$name] = $route;
-//        Route::$id++;
         return $route;
     }
 

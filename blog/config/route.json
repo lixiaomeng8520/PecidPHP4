@@ -1,3 +1,22 @@
 {
-
+    "routes": [
+        {
+            "name": "home",
+            "method": "GET",
+            "pattern": "/",
+            "handler": "\\Blog\\Controller\\User:getUsers"
+        },
+        {
+            "name": "users",
+            "method": "GET",
+            "pattern": "/users",
+            "handler": "\\Blog\\Controller\\User:getUsers"
+        },
+        {
+            "name"      : "user",
+            "method"    : "GET",
+            "pattern"   : "/user/{name}",
+            "handler"   : "\\Blog\\Controller\\User:getUser"
+        }
+    ]
 }
