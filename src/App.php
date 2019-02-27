@@ -45,6 +45,11 @@ class App extends Handler
         $this->config = new Config(dirname(__FILE__) . DIRECTORY_SEPARATOR . 'config.json');
         file_exists($app_config_path) && $this->config->merge(new Config($app_config_path));
 
+        $routes = $this->config->get('routes');
+        foreach ($routes as $name => $route) {
+            $this->map($route['method'], $route['pattern'], $route['handler'], $name);
+        }
+
         $this->request = ServerRequestFactory::fromGlobals($_SERVER, $_GET, $_POST, $_COOKIE, $_FILES);
         $this->request = $this->request->withAttribute('app', $this);
     }
@@ -78,15 +83,14 @@ class App extends Handler
         return $this->logger;
     }
 
-
     /****************************Route*****************************************/
 
-    public function get(string $pattern, $handler, string $name = '') : Route
+    public function get(string $pattern, $handler, string $name) : Route
     {
         return $this->map('GET', $pattern, $handler, $name);
     }
 
-    public function post(string $pattern, $handler, string $name = '') : Route
+    public function post(string $pattern, $handler, string $name) : Route
     {
         return $this->map('POST', $pattern, $handler, $name);
     }
@@ -95,9 +99,14 @@ class App extends Handler
     {
         //  preg_match('/^([a-zA-Z0-9_\\]+?):([a-zA-Z0-9_]+)$/', $pattern, $matches);
         $route = new Route($method, $pattern, $handler, $name);
-        $this->routes[Route::$id] = $route;
-        Route::$id++;
+        $this->routes[$name] = $route;
+//        Route::$id++;
         return $route;
+    }
+
+    public function getRoute() : Route
+    {
+        return $this->route;
     }
 
     /****************************Middleware*************************************/
@@ -135,15 +144,14 @@ class App extends Handler
 
     public function handle()
     {
-        $config = $this->getConfig();
         $exception = $this->getException();
         if ($exception instanceof NotFoundException) {
-            $handler = $config->get('exceptionHandlers.notFound');
+            $handler = $this->config->get('notFoundHandler');
 
         } elseif ($exception instanceof MethodNotAllowedException) {
-            $handler = $config->get('exceptionHandlers.methodNotAllowed');
+            $handler = $this->config->get('methodNotAllowedHandler');
         } else {
-            $handler = $config->get('exceptionHandlers.error');
+            $handler = $this->config->get('errorHandler');
         }
         $response = call_user_func_array([new $handler(), 'handle'], [$this->request, $exception]);
         $this->respond($response);
@@ -151,7 +159,6 @@ class App extends Handler
 
     private function respond(ResponseInterface $response)
     {
-//        die;
         header(sprintf(
             'HTTP/%s %s %s',
             $response->getProtocolVersion(),
