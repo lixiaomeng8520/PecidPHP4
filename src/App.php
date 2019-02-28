@@ -123,7 +123,7 @@ class App extends Handler
 
     public function map(string $name, string $method, string $pattern, $handler) : Route
     {
-        $route = new Route($method, $pattern, $handler, $name);
+        $route = new Route($name, $method, $pattern, $handler);
         $this->routes[$name] = $route;
         return $route;
     }
@@ -155,8 +155,8 @@ class App extends Handler
             } else {
                 $this->map('home', 'GET', '/', [$this, 'welcome']);
             }
-            foreach ($this->routes as $id => $route) {
-                $r->addRoute($route->method, $route->pattern, $id);
+            foreach ($this->routes as $name => $route) {
+                $r->addRoute($route->method, $route->pattern, $name);
             }
         });
 

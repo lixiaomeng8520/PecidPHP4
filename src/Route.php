@@ -7,47 +7,32 @@ use Zend\Diactoros\Response;
 
 class Route
 {
-
-    /**
-     * @var string
-     */
     private $method;
-
-    /**
-     * @var string
-     */
     private $pattern;
-
-    /**
-     * @var
-     */
     private $handler;
-
-    /**
-     * @var string
-     */
     private $name;
-
-    /**
-     * @var int
-     */
-    public static $id = 0;
+    private $args = [];
 
     private $middlewares = [];
 
-    public $args = [];
-
-    public function __construct(string $method, string $pattern, $handler, string $name = '')
+    public function __construct($name, $method, $pattern, $handler, $args = [], $middlewares = [])
     {
         $this->method = $method;
         $this->pattern = $pattern;
         $this->handler = $handler;
         $this->name = $name;
+        $this->args = $args;
+        $this->middlewares = $middlewares;
     }
 
     public function __get($name)
     {
         return $this->$name;
+    }
+
+    public function __set($name, $val)
+    {
+        $this->$name = $val;
     }
 
     public function __invoke(ServerRequestInterface $request)
