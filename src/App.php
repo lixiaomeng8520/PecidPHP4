@@ -22,19 +22,18 @@ use FastRoute\RouteCollector;
 
 class App extends Handler
 {
+    /// path config
+
     private $app_path;
+    private $app_config_path;
 
-    private $container;
+    /// component
+
     private $config;
-    private $logger;
-
-    /* @var ServerRequestInterface */
     private $request;
-
-    /* @var Route */
     private $route;
-
-    /* @var PhpRenderer */
+    private $container;
+    private $logger;
     private $view;
 
     private $routes = [];
@@ -50,64 +49,65 @@ class App extends Handler
         (new Run())->pushHandler($this)->register();
 
         $this->app_path = $app_path;
-
-        $this->request = ServerRequestFactory::fromGlobals($_SERVER, $_GET, $_POST, $_COOKIE, $_FILES);
-        $this->request = $this->request->withAttribute('app', $this);
-
-        $this->config = new Config(dirname(__FILE__) . DIRECTORY_SEPARATOR . 'config.json');
-        $app_config_path = $app_path . DIRECTORY_SEPARATOR . $app_config_path;
-        file_exists($app_config_path) && $this->config->merge(new Config($app_config_path));
-
-        $routes = $this->config->get('routes');
-        if ($routes !== null && count($routes) > 0) {
-            foreach ($routes as $route) {
-                $this->map($route['name'], $route['method'], $route['pattern'], $route['handler']);
-            }
-        } else {
-            $this->map('home', 'GET', '/', [$this, 'welcome']);
-        }
-
-
+        $this->app_config_path = $app_config_path;
     }
 
     /****************************Component*************************************/
 
-    /// Container
+    /// Config
+    public function getConfig() : ConfigInterface
+    {
+        if ($this->config === null) {
+            $this->config = new Config(dirname(__FILE__) . DIRECTORY_SEPARATOR . 'config.json');
+            $app_config_path = $this->app_path . DIRECTORY_SEPARATOR . $this->app_config_path;
+            file_exists($app_config_path) && $this->config->merge(new Config($app_config_path));
+        }
+        return $this->config;
+    }
 
+    /// Request
+    public function getRequest() : ServerRequestInterface
+    {
+        if ($this->request === null) {
+            $this->request = ServerRequestFactory::fromGlobals($_SERVER, $_GET, $_POST, $_COOKIE, $_FILES);
+            $this->request = $this->request->withAttribute('app', $this);
+        }
+        return $this->request;
+    }
+
+    /// Route
+    public function getRoute() : Route
+    {
+        return $this->route;
+    }
+
+    /// Container
     public function getContainer() : ContainerInterface
     {
-        if (!$this->container) {
+        if ($this->container === null) {
             $this->container = new Container();
         }
         return $this->container;
     }
 
-    /// Config
-
-    public function getConfig() : ConfigInterface
-    {
-        return $this->config;
-    }
-
     /// Logger
-
     public function getLogger() : LoggerInterface
     {
-        if (!$this->logger) {
+        if ($this->logger === null) {
             $this->logger = new Logger('PecidPHP4');
         }
         return $this->logger;
     }
 
     /// View
-
     public function getView() : PhpRenderer
     {
-        if (!$this->view) {
-            $this->view = new PhpRenderer($this->app_path . DIRECTORY_SEPARATOR . $this->config->get('templates'));
+        if ($this->view === null) {
+            $this->view = new PhpRenderer($this->app_path . DIRECTORY_SEPARATOR . $this->getConfig()->get('templates'));
         }
         return $this->view;
     }
+
 
     /****************************Route*****************************************/
 
@@ -126,11 +126,6 @@ class App extends Handler
         $route = new Route($method, $pattern, $handler, $name);
         $this->routes[$name] = $route;
         return $route;
-    }
-
-    public function getRoute() : Route
-    {
-        return $this->route;
     }
 
     public function welcome(ServerRequestInterface $request) : ResponseInterface
@@ -152,12 +147,21 @@ class App extends Handler
     public function run()
     {
         $dispatcher = \FastRoute\simpleDispatcher(function (RouteCollector $r) {
+            $routes = $this->getConfig()->get('routes');
+            if ($routes !== null && count($routes) > 0) {
+                foreach ($routes as $route) {
+                    $this->map($route['name'], $route['method'], $route['pattern'], $route['handler']);
+                }
+            } else {
+                $this->map('home', 'GET', '/', [$this, 'welcome']);
+            }
             foreach ($this->routes as $id => $route) {
                 $r->addRoute($route->method, $route->pattern, $id);
             }
         });
 
-        $routeInfo = $dispatcher->dispatch($this->request->getMethod(), $this->request->getUri()->getPath());
+        $request = $this->getRequest();
+        $routeInfo = $dispatcher->dispatch($request->getMethod(), $request->getUri()->getPath());
 
         switch ($routeInfo[0]) {
             case Dispatcher::NOT_FOUND:
@@ -168,22 +172,23 @@ class App extends Handler
                 $this->route = $this->routes[$routeInfo[1]];
                 $this->route->args = $routeInfo[2];
                 $this->add($this->route);
-                $response = (new Relay($this->middlewares))->handle($this->request);
+                $response = (new Relay($this->middlewares))->handle($request);
                 $this->respond($response);
         }
     }
 
     public function handle()
     {
+        $config = $this->getConfig();
         $exception = $this->getException();
         if ($exception instanceof NotFoundException) {
-            $handler = $this->config->get('notFoundHandler');
+            $handler = $config->get('notFoundHandler');
         } elseif ($exception instanceof MethodNotAllowedException) {
-            $handler = $this->config->get('methodNotAllowedHandler');
+            $handler = $config->get('methodNotAllowedHandler');
         } else {
-            $handler = $this->config->get('errorHandler');
+            $handler = $config->get('errorHandler');
         }
-        $response = call_user_func_array([new $handler(), 'handle'], [$this->request, $exception]);
+        $response = call_user_func_array([new $handler(), 'handle'], [$this->getRequest(), $exception]);
         $this->respond($response);
     }
 
