@@ -12,5 +12,6 @@
             "pattern"   : "/user/{name}",
             "handler"   : "\\Blog\\Controller\\User:getUser"
         }
-    ]
+    ],
+    "templates": "templates"
 }

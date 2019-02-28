@@ -3,6 +3,7 @@ namespace PecidPHP4;
 
 use Psr\Http\Message\ServerRequestInterface;
 use Relay\Relay;
+use Zend\Diactoros\Response;
 
 class Route
 {
@@ -68,6 +69,9 @@ class Route
             throw new \Exception('handler can not be resolved');
         }
         $this->add($handler);
+        $this->add(function () {
+            return new Response();
+        });
         return (new Relay($this->middlewares))->handle($request);
     }
 

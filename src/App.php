@@ -11,6 +11,7 @@ use Psr\Http\Message\ResponseInterface;
 use Psr\Http\Message\ServerRequestInterface;
 use Psr\Log\LoggerInterface;
 use Relay\Relay;
+use Slim\Views\PhpRenderer;
 use Whoops\Handler\Handler;
 use Whoops\Run;
 use Zend\Diactoros\Response;
@@ -21,12 +22,11 @@ use FastRoute\RouteCollector;
 
 class App extends Handler
 {
+    private $app_path;
+
     private $container;
     private $config;
     private $logger;
-
-    private $routes = [];
-    private $middlewares = [];
 
     /* @var ServerRequestInterface */
     private $request;
@@ -34,20 +34,29 @@ class App extends Handler
     /* @var Route */
     private $route;
 
-    public static function getInstance(string $app_config_path)
+    /* @var PhpRenderer */
+    private $view;
+
+    private $routes = [];
+    private $middlewares = [];
+
+    public static function getInstance(string $app_path, string $app_config_path)
     {
-        return new static($app_config_path);
+        return new static($app_path, $app_config_path);
     }
 
-    public function __construct(string $app_config_path)
+    public function __construct(string $app_path, string $app_config_path)
     {
-        $this->config = new Config(dirname(__FILE__) . DIRECTORY_SEPARATOR . 'config.json');
-        file_exists($app_config_path) && $this->config->merge(new Config($app_config_path));
+        (new Run())->pushHandler($this)->register();
+
+        $this->app_path = $app_path;
 
         $this->request = ServerRequestFactory::fromGlobals($_SERVER, $_GET, $_POST, $_COOKIE, $_FILES);
         $this->request = $this->request->withAttribute('app', $this);
 
-        (new Run())->pushHandler($this)->register();
+        $this->config = new Config(dirname(__FILE__) . DIRECTORY_SEPARATOR . 'config.json');
+        $app_config_path = $app_path . DIRECTORY_SEPARATOR . $app_config_path;
+        file_exists($app_config_path) && $this->config->merge(new Config($app_config_path));
 
         $routes = $this->config->get('routes');
         if ($routes !== null && count($routes) > 0) {
@@ -57,6 +66,7 @@ class App extends Handler
         } else {
             $this->map('home', 'GET', '/', [$this, 'welcome']);
         }
+
 
     }
 
@@ -87,6 +97,16 @@ class App extends Handler
             $this->logger = new Logger('PecidPHP4');
         }
         return $this->logger;
+    }
+
+    /// View
+
+    public function getView() : PhpRenderer
+    {
+        if (!$this->view) {
+            $this->view = new PhpRenderer($this->app_path . DIRECTORY_SEPARATOR . $this->config->get('templates'));
+        }
+        return $this->view;
     }
 
     /****************************Route*****************************************/
